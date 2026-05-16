@@ -14,6 +14,54 @@
       flex-direction: column;
       height: 100vh;
     }
+
+    /* Sidebar */
+    #sidebar {
+      width: 220px;
+      background: #0b1220;
+      border-right: 1px solid #1f2937;
+      padding: 1rem;
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      overflow-y: auto;
+    }
+
+    #sidebar h3 {
+      margin-top: 0;
+      font-size: 1rem;
+      color: #93c5fd;
+    }
+
+    #sidebar ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    #sidebar li {
+      padding: 0.5rem;
+      margin-bottom: 0.25rem;
+      border-radius: 4px;
+      cursor: pointer;
+      background: #1e293b;
+    }
+
+    #sidebar li.active {
+      background: #3b82f6;
+      color: white;
+    }
+
+    #sidebar li:hover {
+      background: #334155;
+    }
+
+    /* Shift main content right */
+    header, #challenge-box, main {
+      margin-left: 220px;
+    }
+
     header {
       padding: 0.75rem 1rem;
       background: #020617;
@@ -22,10 +70,12 @@
       justify-content: space-between;
       align-items: center;
     }
+
     header h1 {
       font-size: 1rem;
       margin: 0;
     }
+
     header span {
       font-size: 0.8rem;
       color: #9ca3af;
@@ -37,14 +87,17 @@
       padding:1rem;
       border-bottom:1px solid #334155;
     }
+
     #challenge-box h2 {
       margin:0 0 .5rem 0;
       font-size:1.1rem;
     }
+
     #challenge-box p {
       margin:0 0 .5rem 0;
       color:#cbd5e1;
     }
+
     #check-answer {
       background:#38bdf8;
       border:none;
@@ -53,6 +106,7 @@
       font-weight:600;
       cursor:pointer;
     }
+
     #challenge-result {
       margin-left:1rem;
       font-weight:600;
@@ -65,15 +119,18 @@
       gap: 0;
       overflow: hidden;
     }
+
     #editor-container, #results-container {
       display: flex;
       flex-direction: column;
       border-right: 1px solid #1f2937;
     }
+
     #results-container {
       border-right: none;
       border-left: 1px solid #1f2937;
     }
+
     #editor {
       flex: 1;
       width: 100%;
@@ -86,5 +143,299 @@
       color: #e5e7eb;
       outline: none;
     }
+
     #controls {
-      padding: 0.5rem 0.75rem
+      padding: 0.5rem 0.75rem;
+      border-top: 1px solid #1f2937;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #020617;
+    }
+
+    button {
+      background: #22c55e;
+      border: none;
+      color: #022c22;
+      font-weight: 600;
+      padding: 0.4rem 0.9rem;
+      border-radius: 0.375rem;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    button:hover {
+      background: #16a34a;
+    }
+
+    #status {
+      font-size: 0.8rem;
+      color: #9ca3af;
+    }
+
+    #results {
+      flex: 1;
+      overflow: auto;
+      padding: 0.75rem;
+      background: #020617;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 0.85rem;
+    }
+
+    th, td {
+      border: 1px solid #1f2937;
+      padding: 0.35rem 0.5rem;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th {
+      background: #111827;
+      font-weight: 600;
+    }
+
+    tr:nth-child(even) td {
+      background: #020617;
+    }
+
+    tr:nth-child(odd) td {
+      background: #030712;
+    }
+
+    #error {
+      color: #f97373;
+      font-size: 0.8rem;
+      margin-top: 0.5rem;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ⭐ SIDEBAR -->
+  <div id="sidebar">
+    <h3>Levels</h3>
+    <ul id="level-list">
+      <li data-level="1" class="active">1. List all users</li>
+      <li data-level="2">2. Users from the US</li>
+    </ul>
+  </div>
+
+  <header>
+    <div>
+      <h1>Jenny's SQL Lab — Game Mode</h1>
+      <span>In-memory SQLite · no backend · safe to break</span>
+    </div>
+    <span>Complete challenges to level up.</span>
+  </header>
+
+  <div id="challenge-box">
+    <h2>Challenge 1: List all users</h2>
+    <p>Write a query that returns all rows from the <code>users</code> table.</p>
+    <button id="check-answer">Check Answer</button>
+    <span id="challenge-result"></span>
+  </div>
+
+  <main>
+    <section id="editor-container">
+      <textarea id="editor"></textarea>
+      <div id="controls">
+        <button id="run">Run (Ctrl+Enter)</button>
+        <div id="status">Loading SQL engine…</div>
+      </div>
+    </section>
+
+    <section id="results-container">
+      <div id="results"></div>
+    </section>
+  </main>
+<script src="https://sql.js.org/dist/sql-wasm.js"></script>
+<script>
+let db = null;
+
+function renderTable(result) {
+  if (!result || !result.columns || !result.values)
+    return "<em>No rows returned.</em>";
+
+  let html = "<table><thead><tr>";
+  result.columns.forEach(c => html += "<th>" + c + "</th>");
+  html += "</tr></thead><tbody>";
+
+  result.values.forEach(row => {
+    html += "<tr>";
+    row.forEach(cell => html += "<td>" + (cell ?? "NULL") + "</td>");
+    html += "</tr>";
+  });
+
+  html += "</tbody></table>";
+  return html;
+}
+
+function setStatus(msg) {
+  document.getElementById("status").textContent = msg;
+}
+
+function setResults(html, errorMsg = "") {
+  document.getElementById("results").innerHTML =
+    html + (errorMsg ? "<div id='error'>" + errorMsg + "</div>" : "");
+}
+/* ⭐ LEVEL SYSTEM ⭐ */
+
+const challenges = {
+  1: {
+    title: "Challenge 1: List all users",
+    description: "Write a query that returns all rows from the users table.",
+    expectedSQL: "SELECT * FROM users;",
+    starterSQL: "SELECT * FROM users;"
+  },
+  2: {
+    title: "Challenge 2: Users from the US",
+    description: "Return only users whose country is 'US'.",
+    expectedSQL: "SELECT * FROM users WHERE country = 'US';",
+    starterSQL: "SELECT * FROM users WHERE country = 'US';"
+  }
+};
+
+function loadChallenge(level) {
+  const c = challenges[level];
+
+  document.querySelector("#challenge-box h2").textContent = c.title;
+  document.querySelector("#challenge-box p").innerHTML = c.description;
+  document.getElementById("editor").value = c.starterSQL;
+
+  document.querySelectorAll("#level-list li").forEach(li => {
+    li.classList.toggle("active", li.dataset.level == level);
+  });
+
+  localStorage.setItem("currentLevel", level);
+}
+
+document.querySelectorAll("#level-list li").forEach(li => {
+  li.addEventListener("click", () => {
+    loadChallenge(li.dataset.level);
+  });
+});
+
+/* ⭐ SQL ENGINE INIT ⭐ */
+
+async function initDb() {
+  setStatus("Loading SQL engine…");
+
+  const SQL = await initSqlJs({
+    locateFile: file => "https://sql.js.org/dist/" + file
+  });
+
+  db = new SQL.Database();
+
+  const schema = `
+    CREATE TABLE users (
+      id INTEGER PRIMARY KEY,
+      name TEXT,
+      country TEXT
+    );
+    INSERT INTO users (name, country) VALUES
+      ('Alice', 'US'),
+      ('Bob', 'US'),
+      ('Carlos', 'MX'),
+      ('Diana', 'CA');
+
+    CREATE TABLE orders (
+      id INTEGER PRIMARY KEY,
+      user_id INTEGER,
+      amount REAL,
+      created_at TEXT,
+      FOREIGN KEY(user_id) REFERENCES users(id)
+    );
+    INSERT INTO orders (user_id, amount, created_at) VALUES
+      (1, 120.50, '2024-01-01'),
+      (1, 80.00,  '2024-01-05'),
+      (2, 42.25,  '2024-01-03'),
+      (3, 300.00, '2024-01-10');
+  `;
+  db.run(schema);
+
+  const saved = localStorage.getItem("currentLevel") || "1";
+  loadChallenge(saved);
+
+  setStatus("Ready. Press Run or Ctrl+Enter.");
+  setResults("<em>Run a query to see results.</em>");
+}
+
+function runQuery() {
+  if (!db) return;
+
+  const sql = document.getElementById("editor").value.trim();
+  if (!sql) {
+    setResults("<em>Type a query first.</em>");
+    return;
+  }
+
+  try {
+    const results = db.exec(sql);
+    if (!results.length) {
+      setResults("<em>Query executed. No rows returned.</em>");
+    } else {
+      setResults(results.map(r => renderTable(r)).join("<br/>"));
+    }
+    setStatus("Query executed successfully.");
+  } catch (e) {
+    setResults("", e.message);
+    setStatus("Error running query.");
+  }
+}
+
+document.getElementById("run").addEventListener("click", runQuery);
+document.getElementById("editor").addEventListener("keydown", e => {
+  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    runQuery();
+  }
+});
+
+/* ⭐ CHECK ANSWER ⭐ */
+
+function arraysEqual(a, b) {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+document.getElementById("check-answer").addEventListener("click", () => {
+  const level = localStorage.getItem("currentLevel") || "1";
+  const sql = document.getElementById("editor").value.trim();
+
+  try {
+    const results = db.exec(sql);
+    if (!results.length) return challengeResult("No rows returned.", false);
+
+    const result = results[0];
+    const expected = db.exec(challenges[level].expectedSQL)[0];
+
+    const correct =
+      arraysEqual(result.columns, expected.columns) &&
+      arraysEqual(result.values, expected.values);
+
+    if (correct) {
+      challengeResult("Correct!", true);
+      localStorage.setItem("challenge" + level, "complete");
+    } else {
+      challengeResult("Incorrect.", false);
+    }
+  } catch {
+    challengeResult("Error running query.", false);
+  }
+});
+
+function challengeResult(msg, success) {
+  const el = document.getElementById("challenge-result");
+  el.textContent = msg;
+  el.style.color = success ? "#4ade80" : "#f87171";
+}
+
+initDb();
+</script>
+</body>
+</html>
