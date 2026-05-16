@@ -60,6 +60,8 @@
     /* Shift main content right */
     header, #challenge-box, main {
       margin-left: 220px;
+      width: calc(100% - 220px);
+      box-sizing: border-box;
     }
 
     header {
@@ -118,6 +120,7 @@
       grid-template-columns: 1.1fr 1fr;
       gap: 0;
       overflow: hidden;
+      width: 100%;
     }
 
     #editor-container, #results-container {
